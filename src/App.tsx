@@ -1,4 +1,4 @@
-import React from "react";
+
 import ArtworksTable from "./components/ArtworksTable"; // ✅ must match exact file name and path
 
 const App = () => {
