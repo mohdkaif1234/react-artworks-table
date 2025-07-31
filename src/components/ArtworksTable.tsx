@@ -24,7 +24,6 @@ const ArtworksTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [selectedRows, setSelectedRows] = useState<{ [id: number]: Artwork }>({});
-  const [showRowOptions, setShowRowOptions] = useState<boolean>(false); // toggle on title click
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
@@ -66,43 +65,6 @@ const ArtworksTable: React.FC = () => {
 
   const selected = Object.values(selectedRows);
 
-  // Custom header with click interaction
-  const titleHeader = () => (
-    <div style={{ position: 'relative', cursor: 'pointer' }}>
-      <span onClick={() => setShowRowOptions(!showRowOptions)}>
-        Title ▼
-      </span>
-      {showRowOptions && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            background: '#fff',
-            border: '1px solid #ccc',
-            padding: '0.5rem',
-            zIndex: 1000,
-            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
-          }}
-        >
-          {[5, 10, 20, 50].map((size) => (
-            <div
-              key={size}
-              style={{ padding: '0.25rem 0', cursor: 'pointer' }}
-              onClick={() => {
-                setPageSize(size);
-                setCurrentPage(1);
-                setShowRowOptions(false);
-              }}
-            >
-              Show {size} rows
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="p-4">
       <h2>Artworks Table</h2>
@@ -113,6 +75,27 @@ const ArtworksTable: React.FC = () => {
           <ul>{selected.map((a) => <li key={a.id}>{a.title}</li>)}</ul>
         </div>
       )}
+
+      {/* ✅ Rows per page dropdown */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label htmlFor="rowsPerPage" style={{ marginRight: '0.5rem' }}>
+          Select number of rows:
+        </label>
+        <select
+          id="rowsPerPage"
+          value={pageSize}
+          onChange={(e) => {
+            setCurrentPage(1); // Reset to page 1 on page size change
+            setPageSize(Number(e.target.value));
+          }}
+        >
+          {[5, 10, 20, 50].map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <DataTable
         value={data}
@@ -128,7 +111,7 @@ const ArtworksTable: React.FC = () => {
         selectionMode="checkbox"
       >
         <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
-        <Column field="title" header={titleHeader()} />
+        <Column field="title" header="Title" />
         <Column field="place_of_origin" header="Origin" />
         <Column field="artist_display" header="Artist" />
         <Column field="inscriptions" header="Inscriptions" />
