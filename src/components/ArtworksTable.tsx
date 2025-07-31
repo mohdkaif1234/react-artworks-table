@@ -22,26 +22,29 @@ const ArtworksTable: React.FC = () => {
   const [data, setData] = useState<Artwork[]>([]);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 10;
+  const [pageSize, setPageSize] = useState<number>(10);
   const [selectedRows, setSelectedRows] = useState<{ [id: number]: Artwork }>({});
+  const [showRowOptions, setShowRowOptions] = useState<boolean>(false); // toggle on title click
 
   useEffect(() => {
-    fetchData(currentPage);
-  }, [currentPage]);
+    fetchData(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
-  async function fetchData(page = 1) {
+  async function fetchData(page = 1, limit = 10) {
     try {
-      const res = await fetch(`https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}`);
+      const res = await fetch(`https://api.artic.edu/api/v1/artworks?page=${page}&limit=${limit}`);
       const json = await res.json();
-      setData(json.data.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        place_of_origin: item.place_of_origin,
-        artist_display: item.artist_display,
-        inscriptions: item.inscriptions || '',
-        date_start: item.date_start,
-        date_end: item.date_end,
-      })));
+      setData(
+        json.data.map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          place_of_origin: item.place_of_origin,
+          artist_display: item.artist_display,
+          inscriptions: item.inscriptions || '',
+          date_start: item.date_start,
+          date_end: item.date_end,
+        }))
+      );
       setTotalRecords(json.pagination.total);
     } catch (err) {
       console.error(err);
@@ -63,9 +66,47 @@ const ArtworksTable: React.FC = () => {
 
   const selected = Object.values(selectedRows);
 
+  // Custom header with click interaction
+  const titleHeader = () => (
+    <div style={{ position: 'relative', cursor: 'pointer' }}>
+      <span onClick={() => setShowRowOptions(!showRowOptions)}>
+        Title ▼
+      </span>
+      {showRowOptions && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            background: '#fff',
+            border: '1px solid #ccc',
+            padding: '0.5rem',
+            zIndex: 1000,
+            boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+          }}
+        >
+          {[5, 10, 20, 50].map((size) => (
+            <div
+              key={size}
+              style={{ padding: '0.25rem 0', cursor: 'pointer' }}
+              onClick={() => {
+                setPageSize(size);
+                setCurrentPage(1);
+                setShowRowOptions(false);
+              }}
+            >
+              Show {size} rows
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div>
+    <div className="p-4">
       <h2>Artworks Table</h2>
+
       {selected.length > 0 && (
         <div className="p-3 mb-3 border rounded bg-gray-50">
           <strong>Selected Artworks ({selected.length}):</strong>
@@ -87,7 +128,7 @@ const ArtworksTable: React.FC = () => {
         selectionMode="checkbox"
       >
         <Column selectionMode="multiple" headerStyle={{ width: '3em' }} />
-        <Column field="title" header="Title" />
+        <Column field="title" header={titleHeader()} />
         <Column field="place_of_origin" header="Origin" />
         <Column field="artist_display" header="Artist" />
         <Column field="inscriptions" header="Inscriptions" />
