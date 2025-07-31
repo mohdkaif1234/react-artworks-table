@@ -65,6 +65,14 @@ const ArtworksTable: React.FC = () => {
 
   const selected = Object.values(selectedRows);
 
+  const handlePageSizeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value) && value > 0 && value <= 1000) {
+      setPageSize(value);
+      setCurrentPage(1); // reset to page 1
+    }
+  };
+
   return (
     <div className="p-4">
       <h2>Artworks Table</h2>
@@ -76,25 +84,20 @@ const ArtworksTable: React.FC = () => {
         </div>
       )}
 
-      {/* ✅ Rows per page dropdown */}
+      {/* ✅ Input for custom number of rows */}
       <div style={{ marginBottom: '1rem' }}>
-        <label htmlFor="rowsPerPage" style={{ marginRight: '0.5rem' }}>
-          Select number of rows:
+        <label htmlFor="rowsInput" style={{ marginRight: '0.5rem' }}>
+          Enter number of rows:
         </label>
-        <select
-          id="rowsPerPage"
+        <input
+          id="rowsInput"
+          type="number"
+          min={1}
+          max={1000}
           value={pageSize}
-          onChange={(e) => {
-            setCurrentPage(1); // Reset to page 1 on page size change
-            setPageSize(Number(e.target.value));
-          }}
-        >
-          {[5, 10, 20, 50].map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
+          onChange={handlePageSizeInput}
+          style={{ width: '80px', padding: '4px' }}
+        />
       </div>
 
       <DataTable
