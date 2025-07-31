@@ -22,7 +22,8 @@ const ArtworksTable: React.FC = () => {
   const [data, setData] = useState<Artwork[]>([]);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(10); // Actual page size used by table
+  const [pageSizeInput, setPageSizeInput] = useState<number>(10); // Value from input field
   const [selectedRows, setSelectedRows] = useState<{ [id: number]: Artwork }>({});
 
   useEffect(() => {
@@ -65,11 +66,19 @@ const ArtworksTable: React.FC = () => {
 
   const selected = Object.values(selectedRows);
 
-  const handlePageSizeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
-    if (!isNaN(value) && value > 0 && value <= 1000) {
-      setPageSize(value);
-      setCurrentPage(1); // reset to page 1
+    if (!isNaN(value)) {
+      setPageSizeInput(value);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (pageSizeInput > 0 && pageSizeInput <= 1000) {
+      setPageSize(pageSizeInput);
+      setCurrentPage(1); // Reset to page 1
+    } else {
+      alert('Please enter a number between 1 and 1000');
     }
   };
 
@@ -84,20 +93,23 @@ const ArtworksTable: React.FC = () => {
         </div>
       )}
 
-      {/* ✅ Input for custom number of rows */}
+      {/* ✅ Row count input and submit */}
       <div style={{ marginBottom: '1rem' }}>
-        <label htmlFor="rowsInput" style={{ marginRight: '0.5rem' }}>
-          Enter number of rows:
+        <label htmlFor="rowsInput" style={{ marginRight: '0.5rem', fontWeight: 'bold' }}>
+          How many rows do you want?
         </label>
         <input
           id="rowsInput"
           type="number"
           min={1}
           max={1000}
-          value={pageSize}
-          onChange={handlePageSizeInput}
-          style={{ width: '80px', padding: '4px' }}
+          value={pageSizeInput}
+          onChange={handleInputChange}
+          style={{ width: '100px', padding: '6px', marginRight: '10px' }}
         />
+        <button onClick={handleSubmit} style={{ padding: '6px 12px', cursor: 'pointer' }}>
+          Submit
+        </button>
       </div>
 
       <DataTable
