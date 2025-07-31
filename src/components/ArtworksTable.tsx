@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { DataTable } from 'primereact/datatable';
+import { DataTable, type DataTableStateEvent, type DataTableSelectionMultipleChangeEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Checkbox } from 'primereact/checkbox';
-import { Button } from 'primereact/button';
+import 'primereact/resources/themes/lara-light-blue/theme.css';
+import 'primereact/resources/primereact.min.css';
 
-interface Artwork {
+type Artwork = {
   id: number;
   title: string;
   place_of_origin: string;
@@ -13,35 +12,34 @@ interface Artwork {
   inscriptions: string;
   date_start: number;
   date_end: number;
-}
+};
 
 const ArtworksTable: React.FC = () => {
   const [data, setData] = useState<Artwork[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [pageSize] = useState(10);
+  const [selectedRows, setSelectedRows] = useState<{ [key: number]: Artwork }>({});
 
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
-  const fetchData = async (page: number) => {
-    setLoading(true);
+  const fetchData = async (page = 1) => {
     try {
-      const res = await axios.get(`https://api.artic.edu/api/v1/artworks?page=${page}&limit=10`);
-      const artworks = res.data.data.map((item: any) => ({
+      const res = await fetch(`https://api.artic.edu/api/v1/artworks?page=${page}&limit=${pageSize}`);
+      const json = await res.json();
+
+      const artworks: Artwork[] = json.data.map((item: any) => ({
         id: item.id,
         title: item.title,
         place_of_origin: item.place_of_origin,
         artist_display: item.artist_display,
-        inscriptions: item.inscriptions || '',
+        inscriptions: item.inscriptions,
         date_start: item.date_start,
         date_end: item.date_end,
       }));
+
       setData(artworks);
-      setTotalRecords(res.data.pagination.total);
-    } catch (err) {
-      console.error('API error', err);
-    } finally {
-      setLoading(false);
+      setTotalRecords(json.pagination.total);
+    } catch (error) {
+      console.error('Error fetching data:', error);
     }
   };
 
@@ -49,86 +47,81 @@ const ArtworksTable: React.FC = () => {
     fetchData(currentPage);
   }, [currentPage]);
 
-  const onPage = (e: { page: number }) => {
-    setCurrentPage(e.page + 1);
+  const onPageChange = (e: DataTableStateEvent) => {
+    if (e.page !== undefined) {
+      const newPage = Math.floor(e.page / pageSize) + 1;
+      setCurrentPage(newPage);
+    }
   };
 
-  const isRowSelected = (id: number) => selectedIds.has(id);
+  const onRowSelectChange = (e: DataTableSelectionMultipleChangeEvent<Artwork>) => {
+    const selected = e.value as Artwork[];
+    const updatedSelections: { [id: number]: Artwork } = { ...selectedRows };
 
-  const toggleRow = (id: number, checked: boolean) => {
-    const updated = new Set(selectedIds);
-    if (checked) updated.add(id);
-    else updated.delete(id);
-    setSelectedIds(updated);
-  };
-
-  const toggleSelectAll = (checked: boolean) => {
-    const updated = new Set(selectedIds);
-    data.forEach((row) => {
-      if (checked) updated.add(row.id);
-      else updated.delete(row.id);
+    selected.forEach((art) => {
+      updatedSelections[art.id] = art;
     });
-    setSelectedIds(updated);
+
+    // Keep only selected from current page
+    Object.keys(updatedSelections).forEach((id) => {
+      const match = selected.find((a) => a.id === Number(id));
+      if (!match) {
+        delete updatedSelections[Number(id)];
+      }
+    });
+
+    setSelectedRows(updatedSelections);
   };
 
-  const headerCheckbox = () => {
-    const allSelected = data.length > 0 && data.every((row) => selectedIds.has(row.id));
-    return (
-      <Checkbox
-        checked={allSelected}
-        onChange={(e) => toggleSelectAll(e.checked!)}
-      />
-    );
-  };
+  const isRowSelected = (row: Artwork) => !!selectedRows[row.id];
 
-  const rowCheckbox = (rowData: Artwork) => {
-    return (
-      <Checkbox
-        checked={isRowSelected(rowData.id)}
-        onChange={(e) => toggleRow(rowData.id, e.checked!)}
-      />
-    );
-  };
+  const getSelectedRowsArray = (): Artwork[] => Object.values(selectedRows);
 
-  const selectionPanel = () => {
-    if (selectedIds.size === 0) return null;
+  const rowSelectionPanel = () => {
+    const selected = getSelectedRowsArray();
+    if (selected.length === 0) return null;
+
     return (
-      <div className="p-3 mb-3 border-round border-1 surface-border">
-        <strong>{selectedIds.size} artworks selected.</strong>
-        <Button
-          label="Clear Selection"
-          icon="pi pi-times"
-          className="p-button-text p-button-danger ml-3"
-          onClick={() => setSelectedIds(new Set())}
-        />
+      <div className="p-3 mb-3 border border-gray-300 rounded bg-gray-50">
+        <strong>Selected Artworks:</strong>
+        <ul>
+          {selected.map((art) => (
+            <li key={art.id}>
+              {art.title} ({art.date_start} - {art.date_end})
+            </li>
+          ))}
+        </ul>
       </div>
     );
   };
 
   return (
     <div>
-      {selectionPanel()}
+      <h2 className="mb-3 text-xl font-semibold">Artworks Table</h2>
+
+      {rowSelectionPanel()}
+
       <DataTable
         value={data}
-        paginator
-        rows={10}
         lazy
+        paginator
+        rows={pageSize}
         totalRecords={totalRecords}
-        loading={loading}
+        onPage={onPageChange}
+        first={(currentPage - 1) * pageSize}
+        selection={getSelectedRowsArray()}
+        onSelectionChange={onRowSelectChange}
         dataKey="id"
-        onPage={onPage}
+        selectionMode="checkbox"
+        rowClassName={(rowData) => (isRowSelected(rowData) ? 'p-highlight' : '')}
       >
-        <Column
-          header={headerCheckbox()}
-          body={rowCheckbox}
-          style={{ width: '3em' }}
-        />
-        <Column field="title" header="Title" sortable />
-        <Column field="place_of_origin" header="Origin" sortable />
-        <Column field="artist_display" header="Artist" />
-        <Column field="inscriptions" header="Inscriptions" />
-        <Column field="date_start" header="Start Year" />
-        <Column field="date_end" header="End Year" />
+        <Column selectionMode="multiple" headerStyle={{ width: '3rem' }}></Column>
+        <Column field="title" header="Title"></Column>
+        <Column field="place_of_origin" header="Place of Origin"></Column>
+        <Column field="artist_display" header="Artist"></Column>
+        <Column field="inscriptions" header="Inscriptions"></Column>
+        <Column field="date_start" header="Start Date"></Column>
+        <Column field="date_end" header="End Date"></Column>
       </DataTable>
     </div>
   );
